@@ -48,10 +48,6 @@ job_types:
         default: 0
 
     property_blueprints:
-      - name: router_static_ips
-        type: ip_ranges
-        configurable: true
-        optional: false
       - name: system_ssl_rsa_certificate
         type: rsa_cert_credentials
         configurable: true
@@ -76,26 +72,30 @@ job_types:
         type: boolean
         configurable: true
         default: false
-      - name: enable_4443
-        type: boolean
+      - name: internal_only_domains
+        type: collection
         configurable: true
-        default: false
+        optional: true
+        property_blueprints:
+          - name: domain
+            type: domain
+            configurable: true
+            optional: false
 
     templates:
       - name: haproxy_exporter
         release: haproxy
         manifest: |
           ha_proxy:
-            backend_servers: (( .haproxy.router_static_ips.parsed_ip_ranges ))
+            internal_only_domains: (( .haproxy.internal_only_domains.value ))
+            trusted_domain_cidrs: (( .haproxy.trusted_domain_cidrs.value ))
+            backend_servers: (( ..cf.router.ips ))
             ssl_pem:
               - (( .haproxy.system_ssl_rsa_certificate.cert_and_private_key_pems ))
               - (( .haproxy.apps_ssl_rsa_certificate.cert_and_private_key_pems ))
-            ssl_ciphers: (( .haproxy.ssl_ciphers.value ))
-            trusted_domain_cidrs: (( .haproxy.trusted_domain_cidrs.value ))
             disable_http: (( .haproxy.disable_http.value ))
             https_redirect_all: (( .haproxy.https_redirect_all.value ))
-            enable_4443: (( .haproxy.enable_4443.value ))
-
+            ssl_ciphers: (( .haproxy.ssl_ciphers.value ))
       - name: haproxy
         release: prometheus
         manifest: |
