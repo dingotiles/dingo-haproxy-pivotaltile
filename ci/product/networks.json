@@ -1,0 +1,13 @@
+{
+    "singleton_availability_zone": {
+        "name": "{{opsmgr_default_az}}"
+    },
+    "other_availability_zones": [
+        {
+            "name": "{{opsmgr_default_az}}"
+        }
+    ],
+    "network": {
+        "name": "{{opsmgr_default_network}}"
+    }
+}

@@ -1,0 +1,22 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: dingotiles/dingo-haproxy-pivotaltile-pipeline
+
+inputs:
+  - name: tile
+  - name: tile-version
+  - name: generated-tile
+
+outputs:
+  - name: reversioned-product
+
+params:
+  product_name:
+  AWS_ACCESS_KEY:
+  AWS_SECRET_KEY:
+
+run:
+  path: tile/ci/tasks/re-version-product.sh

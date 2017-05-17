@@ -1,0 +1,21 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: dingotiles/dingo-haproxy-pivotaltile-pipeline
+
+inputs:
+  - name: tile
+
+params:
+  product_name:
+  opsmgr_url:
+  opsmgr_skip_ssl_verification:
+  opsmgr_username:
+  opsmgr_password:
+  opsmgr_default_az:
+  opsmgr_default_network:
+
+run:
+  path: tile/ci/tasks/configure-product.sh

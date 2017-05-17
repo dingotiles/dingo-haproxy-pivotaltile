@@ -1,0 +1,666 @@
+---
+groups:
+  - name: all
+    jobs:
+      - create-product
+      - deploy-rc-opsmgr19
+      - deploy-rc-opsmgr110
+      - shipit
+      - deploy-final-opsmgr19
+      - deploy-final-opsmgr110
+      - promote
+      - patch
+      - minor
+      - major
+      - upload-stemcell-opsmgr19
+      - upload-stemcell-opsmgr110
+      - build-task-image
+
+  - name: rc
+    jobs:
+      - create-product
+      - deploy-rc-opsmgr19
+      - deploy-rc-opsmgr110
+
+  - name: final
+    jobs:
+      - shipit
+      - deploy-final-opsmgr19
+      - deploy-final-opsmgr110
+      - promote
+      - patch
+      - minor
+      - major
+
+  - name: stemcells
+    jobs:
+      - upload-stemcell-opsmgr19
+      - upload-stemcell-opsmgr110
+
+  - name: image
+    jobs:
+      - build-task-image
+
+jobs:
+  - name: create-product
+    serial: true
+    plan:
+      - aggregate:
+        - get: product-tile
+          trigger: true
+        - get: tile
+        - get: tile-version
+          params:
+            pre: rc
+        - get: haproxy-boshrelease
+          params:
+            tarball: true
+        - get: prometheus-boshrelease
+          params:
+            tarball: true
+        - get: pivnet-stemcell
+          trigger: true
+          passed:
+            - upload-stemcell-opsmgr19
+            - upload-stemcell-opsmgr110
+
+      - task: generate-product
+        file: tile/ci/tasks/generate-product.yml
+        params:
+          product_name: dingo-haproxy
+
+      - put: generated-tile
+        params:
+          file: product/dingo-haproxy-*.pivotal
+
+      - put: tile-version
+        params:
+          file: tile-version/number
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+  - name: deploy-rc-opsmgr19
+    serial_groups:
+      - opsmgr19
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          trigger: true
+          passed:
+            - create-product
+        - get: generated-tile
+          trigger: true
+          passed:
+            - create-product
+
+      - put: dingo-resource-pool-opsmgr19
+        params:
+          claim: opsman
+
+      - task: upload-product
+        file: tile/ci/tasks/upload-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+
+      - task: stage-product
+        file: tile/ci/tasks/stage-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+
+      - task: configure-product
+        file: tile/ci/tasks/configure-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+          opsmgr_default_az: {{opsmgr19-default-az}}
+          opsmgr_default_network: {{opsmgr19-default-network}}
+
+      - task: apply-changes
+        file: tile/ci/tasks/apply-changes.yml
+        params:
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+          opsmgr_ignore_warnings: "true"
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr19
+          params:
+            release: dingo-resource-pool-opsmgr19
+
+  - name: deploy-rc-opsmgr110
+    serial_groups:
+      - opsmgr110
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          trigger: true
+          passed:
+            - create-product
+        - get: generated-tile
+          trigger: true
+          passed:
+            - create-product
+
+      - put: dingo-resource-pool-opsmgr110
+        params:
+          claim: opsman
+
+      - task: upload-product
+        file: tile/ci/tasks/upload-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+
+      - task: stage-product
+        file: tile/ci/tasks/stage-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+
+      - task: configure-product
+        file: tile/ci/tasks/configure-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+          opsmgr_default_az: {{opsmgr110-default-az}}
+          opsmgr_default_network: {{opsmgr110-default-network}}
+
+      - task: apply-changes
+        file: tile/ci/tasks/apply-changes.yml
+        params:
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+          opsmgr_ignore_warnings: "true"
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr110
+          params:
+            release: dingo-resource-pool-opsmgr110
+
+  - name: shipit
+    serial: true
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          passed:
+            - deploy-rc-opsmgr19
+            - deploy-rc-opsmgr110
+          params:
+            bump: final
+        - get: generated-tile
+          passed:
+            - deploy-rc-opsmgr19
+            - deploy-rc-opsmgr110
+
+      - task: re-version-product
+        file: tile/ci/tasks/re-version-product.yml
+        params:
+          product_name: dingo-haproxy
+          AWS_ACCESS_KEY: {{concourse-aws-access-key}}
+          AWS_SECRET_KEY: {{concourse-aws-secret-access-key}}
+
+      - put: tile-version
+        params:
+          file: tile-version/number
+
+      - put: generated-tile
+        params:
+          file: reversioned-product/dingo-haproxy-*.pivotal
+
+  - name: deploy-final-opsmgr19
+    serial_groups:
+      - opsmgr19
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          trigger: true
+          passed:
+            - shipit
+        - get: generated-tile
+          trigger: true
+          passed:
+            - shipit
+
+      - put: dingo-resource-pool-opsmgr19
+        params:
+          claim: opsman
+
+      - task: upload-product
+        file: tile/ci/tasks/upload-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+
+      - task: stage-product
+        file: tile/ci/tasks/stage-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+
+      - task: configure-product
+        file: tile/ci/tasks/configure-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+          opsmgr_default_az: {{opsmgr19-default-az}}
+          opsmgr_default_network: {{opsmgr19-default-network}}
+
+      - task: apply-changes
+        file: tile/ci/tasks/apply-changes.yml
+        params:
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+          opsmgr_ignore_warnings: "true"
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr19
+          params:
+            release: dingo-resource-pool-opsmgr19
+
+  - name: deploy-final-opsmgr110
+    serial_groups:
+      - opsmgr110
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          trigger: true
+          passed:
+            - shipit
+        - get: generated-tile
+          trigger: true
+          passed:
+            - shipit
+
+      - put: dingo-resource-pool-opsmgr110
+        params:
+          claim: opsman
+
+      - task: upload-product
+        file: tile/ci/tasks/upload-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+
+      - task: stage-product
+        file: tile/ci/tasks/stage-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+
+      - task: configure-product
+        file: tile/ci/tasks/configure-product.yml
+        params:
+          product_name: dingo-haproxy
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+          opsmgr_default_az: {{opsmgr110-default-az}}
+          opsmgr_default_network: {{opsmgr110-default-network}}
+
+      - task: apply-changes
+        file: tile/ci/tasks/apply-changes.yml
+        params:
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+          opsmgr_ignore_warnings: "true"
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr110
+          params:
+            release: dingo-resource-pool-opsmgr110
+
+  - name: promote
+    plan:
+      - aggregate:
+        - get: tile
+        - get: tile-version
+          trigger: true
+          passed:
+            - deploy-final-opsmgr19
+            - deploy-final-opsmgr110
+
+      - task: promote-public
+        file: tile/ci/tasks/promote-public.yml
+        params:
+          product_name: dingo-haproxy
+          AWS_ACCESS_KEY_ID: {{concourse-aws-access-key}}
+          AWS_SECRET_ACCESS_KEY: {{concourse-aws-secret-access-key}}
+          AWS_DEFAULT_REGION: ap-southeast-1
+          from_bucket: dingo-haproxy-pivotaltile
+          to_bucket: dingo-haproxy-public-pivotaltile
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+  - name: patch
+    plan:
+      - get: tile-version
+        trigger: true
+        passed:
+          - shipit
+        params:
+          bump: patch
+          pre: rc
+      - put: tile-version
+        params:
+          file: tile-version/number
+
+  - name: minor
+    plan:
+      - get: tile-version
+        params:
+          bump: minor
+          pre: rc
+      - put: tile-version
+        params:
+          file: tile-version/number
+
+  - name: major
+    plan:
+      - get: tile-version
+        params:
+          bump: major
+          pre: rc
+      - put: tile-version
+        params:
+          file: tile-version/number
+
+  - name: upload-stemcell-opsmgr19
+    serial: true
+    plan:
+      - aggregate:
+        - get: tile
+        - get: pivnet-stemcell
+          trigger: true
+          params:
+            globs:
+              - "*vsphere*"
+
+      - put: dingo-resource-pool-opsmgr19
+        params:
+          claim: opsman
+
+      - task: upload-stemcell
+        file: tile/ci/tasks/upload-stemcell.yml
+        params:
+          opsmgr_url: {{opsmgr19-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr19-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr19-username}}
+          opsmgr_password: {{opsmgr19-password}}
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr19
+          params:
+            release: dingo-resource-pool-opsmgr19
+
+  - name: upload-stemcell-opsmgr110
+    serial: true
+    plan:
+      - aggregate:
+        - get: tile
+        - get: pivnet-stemcell
+          trigger: true
+          params:
+            globs:
+              - "*vsphere*"
+
+      - put: dingo-resource-pool-opsmgr110
+        params:
+          claim: opsman
+
+      - task: upload-stemcell
+        file: tile/ci/tasks/upload-stemcell.yml
+        params:
+          opsmgr_url: {{opsmgr110-url}}
+          opsmgr_skip_ssl_verification: {{opsmgr110-skip-ssl-verification}}
+          opsmgr_username: {{opsmgr110-username}}
+          opsmgr_password: {{opsmgr110-password}}
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+    ensure:
+      do:
+        - put: dingo-resource-pool-opsmgr110
+          params:
+            release: dingo-resource-pool-opsmgr110
+
+  - name: build-task-image
+    serial: true
+    plan:
+      - get: docker-image-tile
+        trigger: true
+      - put: docker-image
+        params:
+          build: docker-image-tile/ci/ci_image
+
+    on_failure:
+      do:
+        - put: notify
+          params:
+            channel:  {{slack-channel}}
+            username: concourse
+            icon_url: http://cl.ly/image/3e1h0H3H2s0P/concourse-logo.png
+            text: "<$ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME| Concourse Failure! :airplane_arriving:> Job $BUILD_JOB_NAME at pipeline $BUILD_PIPELINE_NAME failed!"
+
+resource_types:
+  - name: pivnet
+    type: docker-image
+    source:
+      repository: pivotalcf/pivnet-resource
+      tag: latest-final
+
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+      tag: latest
+
+resources:
+  - name: tile
+    type: git
+    source:
+      uri: git@github.com:dingotiles/dingo-haproxy-pivotaltile.git
+      branch: {{tile-branch}}
+      private_key: {{github-key}}
+
+  - name: product-tile
+    type: git
+    source:
+      uri: git@github.com:dingotiles/dingo-haproxy-pivotaltile.git
+      branch: {{tile-branch}}
+      private_key: {{github-key}}
+      paths:
+        - templates
+
+  - name: tile-version
+    type: semver
+    source:
+      driver: git
+      uri: git@github.com:dingotiles/dingo-haproxy-pivotaltile.git
+      branch: version
+      file: version
+      private_key: {{github-key}}
+      initial_version: 0.0.1
+
+  - name: generated-tile
+    type: s3
+    source:
+      access_key_id: {{concourse-aws-access-key}}
+      secret_access_key: {{concourse-aws-secret-access-key}}
+      bucket: dingo-haproxy-pivotaltile
+      regexp: dingo-haproxy-(.*).pivotal
+      region_name: ap-southeast-1
+
+  - name: haproxy-boshrelease
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry-community/cf-haproxy-boshrelease
+
+  - name: prometheus-boshrelease
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry-community/prometheus-boshrelease
+
+  - name: pivnet-stemcell
+    type: pivnet
+    source:
+      api_token: {{pivnet-api-token}}
+      product_slug: stemcells
+      product_version: {{pivnet-stemcell-series}}
+
+  - name: dingo-resource-pool-opsmgr19
+    type: pool
+    source:
+      uri: git@github.com:dingotiles/dingo-resource-pool.git
+      branch: master
+      private_key: {{github-key}}
+      pool: {{opsmgr19-pool}}
+
+  - name: dingo-resource-pool-opsmgr110
+    type: pool
+    source:
+      uri: git@github.com:dingotiles/dingo-resource-pool.git
+      branch: master
+      private_key: {{github-key}}
+      pool: {{opsmgr110-pool}}
+
+  - name: docker-image-tile
+    type: git
+    source:
+      uri: git@github.com:dingotiles/dingo-haproxy-pivotaltile.git
+      branch: {{tile-branch}}
+      private_key: {{github-key}}
+      paths:
+        - ci/ci_image/*
+
+  - name: docker-image
+    type: docker-image
+    source:
+      email: {{docker-hub-email}}
+      username: {{docker-hub-username}}
+      password: {{docker-hub-password}}
+      repository: dingotiles/dingo-haproxy-pivotaltile-pipeline
+
+  - name: notify
+    type: slack-notification
+    source:
+      url: {{slack-webhook}}
