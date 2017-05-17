@@ -1,0 +1,30 @@
+---
+form_types:
+  - name: haproxy
+    label: HAProxy
+    description: "HAProxy is the default load balancer for SSL termination"
+    property_inputs:
+      - reference: .haproxy.router_static_ips
+        label: Router IPs
+        description: "Enter the static IP address(es) for the Router(s)"
+      - reference: .haproxy.system_ssl_rsa_certificate
+        label: System Domain SSL Termination
+        description: "SSL Termination Certificate and Private Key for the System Domain"
+      - reference: .haproxy.apps_ssl_rsa_certificate
+        label: Apps Domain SSL Termination
+        description: "SSL Termination Certificate and Private Key for the Apps Domain"
+      - reference: .haproxy.ssl_ciphers
+        label: SSL Ciphers
+        description: "These ciphers should use dashes in their names, e.g. `ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384`"
+      - reference: .haproxy.trusted_domain_cidrs
+        label: Trusted Domain CIDRs
+        description: "Space separated trusted cidr blocks for internal_only_domains"
+      - reference: .haproxy.disable_http
+        label: Disable port 80
+        description: "Disable port 80 traffic"
+      - reference: .haproxy.https_redirect_all
+        label: Redirect all to HTTPS
+        description: "If this is set to 'true', a https redirect rule for all http calls will be put in the config file"
+      - reference: .haproxy.enable_4443
+        label: Enable port 4443
+        description: "Enables port 4443 for backwards compatibility with WSS-based apps using the old CF HAProxy"
