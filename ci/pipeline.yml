@@ -63,6 +63,9 @@ jobs:
           passed:
             - upload-stemcell-opsmgr19
             - upload-stemcell-opsmgr110
+          params:
+            globs:
+              - "*vsphere*"
 
       - task: generate-product
         file: tile/ci/tasks/generate-product.yml
