@@ -1,0 +1,105 @@
+job_types:
+  - name: haproxy
+    label: HAProxy
+    resource_label: HAProxy
+    description: HAProxy routes Internet traffic to Pivotal Elastic Runtime routers
+
+    static_ip: 1
+    dynamic_ip: 0
+    max_in_flight: 1
+    single_az_only: false
+
+    instance_definition:
+      name: instances
+      type: integer
+      label: Instances
+      configurable: true
+      default: 2
+      constraints:
+        min: 1
+
+    resource_definitions:
+      - name: cpu
+        type: integer
+        label: CPU
+        configurable: true
+        default: 1
+        constraints:
+          min: 1
+          power_of_two: true
+      - name: ram
+        type: integer
+        label: RAM
+        configurable: true
+        default: 1_024
+        constraints:
+          min: 1_024
+      - name: ephemeral_disk
+        type: integer
+        label: Ephemeral Disk
+        configurable: true
+        default: 8_192
+        constraints:
+          min: 4_096
+      - name: persistent_disk
+        type: integer
+        label: Persistent Disk
+        configurable: false
+        default: 0
+
+    property_blueprints:
+      - name: router_static_ips
+        type: ip_ranges
+        configurable: true
+        optional: false
+      - name: system_ssl_rsa_certificate
+        type: rsa_cert_credentials
+        configurable: true
+        optional: false
+      - name: apps_ssl_rsa_certificate
+        type: rsa_cert_credentials
+        configurable: true
+        optional: false
+      - name: ssl_ciphers
+        type: text
+        configurable: true
+        optional: true
+      - name: trusted_domain_cidrs
+        type: string
+        configurable: true
+        optional: true
+      - name: disable_http
+        type: boolean
+        configurable: true
+        default: false
+      - name: https_redirect_all
+        type: boolean
+        configurable: true
+        default: false
+      - name: enable_4443
+        type: boolean
+        configurable: true
+        default: false
+
+    templates:
+      - name: haproxy_exporter
+        release: haproxy
+        manifest: |
+          ha_proxy:
+            backend_servers: (( .haproxy.router_static_ips.parsed_ip_ranges ))
+            ssl_pem:
+              - (( .haproxy.system_ssl_rsa_certificate.cert_and_private_key_pems ))
+              - (( .haproxy.apps_ssl_rsa_certificate.cert_and_private_key_pems ))
+            ssl_ciphers: (( .haproxy.ssl_ciphers.value ))
+            trusted_domain_cidrs: (( .haproxy.trusted_domain_cidrs.value ))
+            disable_http: (( .haproxy.disable_http.value ))
+            https_redirect_all: (( .haproxy.https_redirect_all.value ))
+            enable_4443: (( .haproxy.enable_4443.value ))
+
+      - name: haproxy
+        release: prometheus
+        manifest: |
+          haproxy_exporter:
+            haproxy:
+              pid_file: /var/vcap/sys/run/haproxy/pid
+              scrape_uri: unix:///var/vcap/sys/run/haproxy/stats.sock
