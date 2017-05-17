@@ -32,7 +32,7 @@ releases:
 YAML
 
 # versions available via inputs
-boshreleases=("postgres" "haproxy")
+boshreleases=("haproxy" "prometheus")
 for boshrelease in "${boshreleases[@]}"
 do
   release_version=$(cat ${boshrelease}/version)
