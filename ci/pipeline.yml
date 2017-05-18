@@ -616,7 +616,7 @@ resources:
   - name: haproxy-boshrelease
     type: bosh-io-release
     source:
-      repository: cloudfoundry-community/cf-haproxy-boshrelease
+      repository: cloudfoundry-community/haproxy-boshrelease
 
   - name: prometheus-boshrelease
     type: bosh-io-release
