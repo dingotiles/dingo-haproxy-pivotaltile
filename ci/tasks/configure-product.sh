@@ -51,7 +51,7 @@ ert_system_domain_ssl_rsa_certificate=$(om --target ${opsmgr_url} \
   curl \
   --silent \
   --request POST \
-  --path /api/v0/certificates/generate \
+  --path /api/v0/rsa_certificates \
   --data "{ \"domains\": [\"*.${ert_system_domain}\", \"*.login.${ert_system_domain}\", \"*.uaa.${ert_system_domain}\"] }")
 ert_system_domain_ssl_cert=$(echo ${ert_system_domain_ssl_rsa_certificate} | jq -r '.certificate')
 ert_system_domain_ssl_key=$(echo ${ert_system_domain_ssl_rsa_certificate} | jq -r '.key')
@@ -64,7 +64,7 @@ ert_apps_domain_ssl_rsa_certificate=$(om --target ${opsmgr_url} \
   curl \
   --silent \
   --request POST \
-  --path /api/v0/certificates/generate \
+  --path /api/v0/rsa_certificates \
   --data "{ \"domains\": [\"*.${ert_apps_domain}\"] }")
 ert_apps_domain_ssl_cert=$(echo ${ert_apps_domain_ssl_rsa_certificate} | jq -r '.certificate')
 ert_apps_domain_ssl_key=$(echo ${ert_apps_domain_ssl_rsa_certificate} | jq -r '.key')
