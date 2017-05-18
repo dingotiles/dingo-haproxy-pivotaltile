@@ -83,7 +83,7 @@ job_types:
             optional: false
 
     templates:
-      - name: haproxy_exporter
+      - name: haproxy
         release: haproxy
         manifest: |
           ha_proxy:
@@ -96,7 +96,7 @@ job_types:
             disable_http: (( .haproxy.disable_http.value ))
             https_redirect_all: (( .haproxy.https_redirect_all.value ))
             ssl_ciphers: (( .haproxy.ssl_ciphers.value ))
-      - name: haproxy
+      - name: haproxy_exporter
         release: prometheus
         manifest: |
           haproxy_exporter:
