@@ -43,6 +43,21 @@ ert_apps_domain=$(om --target ${opsmgr_url} \
   --path /api/v0/staged/products/${ert_guid}/properties | \
   jq -r '.properties[".cloud_controller.apps_domain"].value')
 
+
+# Get the Ops Manager version
+om_version=$(om --target ${opsmgr_url} \
+  --skip-ssl-validation \
+  --username "${opsmgr_username}" \
+  --password "${opsmgr_password}" \
+  curl \
+  --silent \
+  --path /api/v0/diagnostic_report | \
+  jq -r '.versions.metadata_version')
+generate_rsa_certificates_path="/api/v0/certificates/generate"
+if [[ ${om_version} == "1.9" ]]; then
+  generate_rsa_certificates_path="/api/v0/rsa_certificates"
+fi
+
 # Generate System Domain SSL certificates
 ert_system_domain_ssl_rsa_certificate=$(om --target ${opsmgr_url} \
   --skip-ssl-validation \
@@ -51,7 +66,7 @@ ert_system_domain_ssl_rsa_certificate=$(om --target ${opsmgr_url} \
   curl \
   --silent \
   --request POST \
-  --path /api/v0/rsa_certificates \
+  --path ${generate_rsa_certificates_path} \
   --data "{ \"domains\": [\"*.${ert_system_domain}\", \"*.login.${ert_system_domain}\", \"*.uaa.${ert_system_domain}\"] }")
 ert_system_domain_ssl_cert=$(echo ${ert_system_domain_ssl_rsa_certificate} | jq -r '.certificate')
 ert_system_domain_ssl_key=$(echo ${ert_system_domain_ssl_rsa_certificate} | jq -r '.key')
@@ -64,7 +79,7 @@ ert_apps_domain_ssl_rsa_certificate=$(om --target ${opsmgr_url} \
   curl \
   --silent \
   --request POST \
-  --path /api/v0/rsa_certificates \
+  --path ${generate_rsa_certificates_path} \
   --data "{ \"domains\": [\"*.${ert_apps_domain}\"] }")
 ert_apps_domain_ssl_cert=$(echo ${ert_apps_domain_ssl_rsa_certificate} | jq -r '.certificate')
 ert_apps_domain_ssl_key=$(echo ${ert_apps_domain_ssl_rsa_certificate} | jq -r '.key')
