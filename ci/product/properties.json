@@ -1,1 +1,14 @@
-{}
+{
+    ".haproxy.system_ssl_rsa_certificate": {
+        "value": {
+            "cert_pem": "{{ert_system_domain_ssl_cert}}",
+            "private_key_pem": "{{ert_system_domain_ssl_key}}"
+        }
+    },
+    ".haproxy.apps_ssl_rsa_certificate": {
+        "value": {
+            "cert_pem": "{{ert_apps_domain_ssl_cert}}",
+            "private_key_pem": "{{ert_apps_domain_ssl_key}}"
+        }
+    }
+}
